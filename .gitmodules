@@ -1,0 +1,3 @@
+[submodule "vec"]
+	path = vec
+	url = git@github.com:embeddr/vec.git
