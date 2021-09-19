@@ -20,6 +20,90 @@ constexpr float kViewportWidth = 1.0F;
 constexpr float kViewportHeight = 1.0F;
 constexpr float kViewportDepth = 1.0F;
 
+/******************************************************************************
+ * SCENE TYPES AND DATA
+ ******************************************************************************/
+
+// TODO: load scene data from a file at runtime
+
+// Basic sphere object
+struct Sphere {
+    vec::Vec3f center;
+    float radius;
+    sf::Color color;
+};
+
+// Scene spheres
+const std::array<Sphere, 3> kSceneSpheres {{
+    {
+        .center = vec::Vec3f{0.0F, -1.0F, 3.0F},
+        .radius = 1.0F,
+        .color = sf::Color::Red,
+    },
+    {
+        .center = vec::Vec3f{2.0F, 0.0F, 4.0F},
+        .radius = 1.0F,
+        .color = sf::Color::Blue,
+    },
+    {
+        .center = vec::Vec3f{-2.0F, 0.0F, 4.0F},
+        .radius = 1.0F,
+        .color = sf::Color::Green,
+    },
+}};
+
+// Basic light object
+struct Light {
+    enum class Type {
+        kAmbient,
+        kPoint,
+        kDirectional,
+    };
+
+    Type type;
+    float intensity;
+    vec::Vec3f position;
+    vec::Vec3f direction;
+
+    static Light makeAmbient(float intensity) {
+        return Light {
+            .type = Type::kAmbient,
+            .intensity = intensity,
+            .position = {},
+            .direction = {},
+        };
+    };
+
+    static Light makePoint(float intensity, vec::Vec3f position) {
+        return Light {
+            .type = Type::kPoint,
+            .intensity = intensity,
+            .position = position,
+            .direction = {},
+        };
+    };
+
+    static Light makeDirectional(float intensity, vec::Vec3f direction) {
+        return Light {
+            .type = Type::kPoint,
+            .intensity = intensity,
+            .position = {},
+            .direction = direction,
+        };
+    };
+};
+
+// Scene lights
+const std::array<Light, 3> kSceneLights {{
+    Light::makeAmbient(0.2F),
+    Light::makePoint(0.6F, {2.1F, 1.0F, 0.0F}),
+    Light::makeDirectional(0.2F, {1.0F, 4.0F, 4.0F})
+}};
+
+/******************************************************************************
+ * CANVAS
+ ******************************************************************************/
+
 // Simple canvas abstraction to facilitate drawing individual pixels to the screen
 class Canvas : public sf::Drawable {
 public:
@@ -55,34 +139,47 @@ private:
     sf::Sprite sprite_;
 };
 
-// Basic sphere scene object
-struct Sphere {
-    vec::Vec3f center;
-    float radius;
-    sf::Color color;
-};
+/******************************************************************************
+ * RAYTRACING
+ ******************************************************************************/
 
-// Scene objects (currently just spheres)
-// Note: can't be constexpr due to sf::Color implementation
-// TODO: load scene data from a file at runtime
-const std::array<Sphere, 3> kSceneSpheres = {{
-    {vec::Vec3f{0.0F, -1.0F, 3.0F}, 1.0F, sf::Color::Red},
-    {vec::Vec3f{2.0F, 0.0F, 4.0F}, 1.0F, sf::Color::Blue},
-    {vec::Vec3f{-2.0F, 0.0F, 4.0F}, 1.0F, sf::Color::Green},
-}};
+// Scale the provided color struct (excluding alpha) by the provided intensity
+sf::Color scaleColor(const sf::Color& color, float intensity) {
+    return sf::Color(color.r * intensity, color.g * intensity, color.b * intensity, color.a);
+}
 
-// Convert the provided canvas pixel coordinates to point on viewport plane
-vec::Vec3f canvas_to_viewport(int x, int y) {
-    return vec::Vec3f{x * kViewportWidth / kCanvasWidth,
-                      y * kViewportHeight / kCanvasHeight,
-                      kViewportDepth};
+// Compute basic lighting intensity at the specified point and surface normal
+float computeLighting(vec::Vec3f point, vec::Vec3f normal) {
+    float intensity = 0.0F;
+
+    for (const Light& light : kSceneLights) {
+        if (light.type == Light::Type::kAmbient) {
+            // Simply add ambient light intensity
+            intensity += light.intensity;
+        } else {
+            // Get light direction
+            const vec::Vec3f direction = (light.type == Light::Type::kDirectional) ?
+                    light.direction :         // use direction directly
+                    (light.position - point); // calculate direction from points
+
+            const float normal_dot_direction = dot(normal, direction);
+            // Check if light source is actually illuminating the point
+            if (normal_dot_direction > 0.0F) {
+                // Calculate and add light intensity according to angle of incidence
+                intensity += (light.intensity * normal_dot_direction) /
+                        (normal.euclidean() * direction.euclidean());
+            }
+        }
+    }
+
+    return intensity;
 }
 
 // Get sphere intersect points
 using RaySphereIntersect = std::pair<std::optional<float>, std::optional<float>>;
-RaySphereIntersect calc_ray_sphere_intersect(const vec::Vec3f& p0,
-                                             const vec::Vec3f& p1,
-                                             const Sphere& sphere) {
+RaySphereIntersect calcRaySphereIntersect(const vec::Vec3f& p0,
+                                          const vec::Vec3f& p1,
+                                          const Sphere& sphere) {
     const float r = sphere.radius;
     const vec::Vec3f c_p0 = p0 - sphere.center;
 
@@ -96,7 +193,7 @@ RaySphereIntersect calc_ray_sphere_intersect(const vec::Vec3f& p0,
         return std::make_pair(std::nullopt, std::nullopt);
     }
 
-    // TODO: Is it worth trying to handle the discriminant == 0 (approx) case separately?
+    // TODO: Is it worth trying to handle the discriminant ~= 0 case separately?
 
     const float disc_root = std::sqrt(discriminant);
     RaySphereIntersect t;
@@ -108,7 +205,7 @@ RaySphereIntersect calc_ray_sphere_intersect(const vec::Vec3f& p0,
 
 // Trace ray from first point toward second point over the provided independent
 // variable range. Return the color of the first object the ray collides with.
-sf::Color trace_ray(const vec::Vec3f& p0, const vec::Vec3f& p1, float t_min, float t_max) {
+sf::Color traceRay(const vec::Vec3f& p0, const vec::Vec3f& p1, float t_min, float t_max) {
     // Closest sphere intersect data
     float closest_t = std::numeric_limits<float>::infinity();
     std::optional<Sphere> closest_sphere;
@@ -116,7 +213,7 @@ sf::Color trace_ray(const vec::Vec3f& p0, const vec::Vec3f& p1, float t_min, flo
     // TODO: find a better way to access scene data
     for (const Sphere& sphere : kSceneSpheres) {
         // Get intersect point(s)
-        const RaySphereIntersect t = calc_ray_sphere_intersect(p0, p1, sphere);
+        const RaySphereIntersect t = calcRaySphereIntersect(p0, p1, sphere);
 
         // Check first potential intersect
         if (t.first.has_value()) {
@@ -136,9 +233,25 @@ sf::Color trace_ray(const vec::Vec3f& p0, const vec::Vec3f& p1, float t_min, flo
         }
     }
 
-    // Return closest sphere color, or white if no intersect
-    return closest_sphere ? closest_sphere.value().color : sf::Color::White;
+    if (closest_sphere) {
+        const vec::Vec3f intersect_p = p0 + closest_t * (p1 - p0);
+        const vec::Vec3f normal = (intersect_p - closest_sphere.value().center).normalize();
+        return scaleColor(closest_sphere.value().color, computeLighting(intersect_p, normal));
+    } else {
+        return sf::Color::White;
+    }
 }
+
+// Convert the provided canvas pixel coordinates to point on viewport plane
+vec::Vec3f canvasToViewport(int x, int y) {
+    return vec::Vec3f{x * kViewportWidth / kCanvasWidth,
+                      y * kViewportHeight / kCanvasHeight,
+                      kViewportDepth};
+}
+
+/******************************************************************************
+ * MAIN
+ ******************************************************************************/
 
 int main() {
     sf::RenderWindow window(sf::VideoMode(kCanvasWidth, kCanvasHeight),
@@ -151,11 +264,11 @@ int main() {
     // Single ray-trace pass
     for (int x = -kCanvasWidth / 2; x < (kCanvasWidth / 2); x++) {
         for (int y = -kCanvasHeight / 2; y < (kCanvasHeight / 2); y++) {
-            const vec::Vec3f viewport_point = canvas_to_viewport(x, y);
-            const sf::Color color = trace_ray(kOrigin,
-                                              viewport_point,
-                                              1.0F, // only include objects beyond viewport
-                                              std::numeric_limits<float>::max());
+            const vec::Vec3f viewport_point = canvasToViewport(x, y);
+            const sf::Color color = traceRay(kOrigin,
+                                             viewport_point,
+                                             1.0F, // only include objects beyond viewport
+                                             std::numeric_limits<float>::max());
             canvas.put_pixel(x, y, color);
         }
     }
