@@ -8,6 +8,13 @@ Basic C++ raytracer, based on "Computer Graphics From Scratch".
     * Package must be visible to cmake. Installing via your distro's package
       manager is probably most convenient.
 
+This project includes Vec as a submodule. Vec provides basic vector/matrix
+classes and operations for games and other 3D applications. Be sure to
+initialize submodules after cloning to fetch required submodule data:
+```
+git submodule update --init --recursive
+```
+
 ## Build and Run
 This application is built using cmake. As an example, the following will build
 a debug binary:

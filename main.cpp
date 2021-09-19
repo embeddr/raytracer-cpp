@@ -1,7 +1,13 @@
+// Standard lib
 #include <iostream>
 
+// SFML
 #include <SFML/Graphics.hpp>
 
+// Vec
+#include <vec.hpp>
+
+constexpr vec::Vec3f kOrigin{0.0F, 0.0F, 0.0F};
 constexpr std::size_t kWindowWidth = 800U;
 constexpr std::size_t kWindowHeight = 600U;
 
