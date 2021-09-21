@@ -4,9 +4,12 @@
 #include <cmath>
 #include <iostream>
 #include <optional>
+#include <string>
+#include <vector>
 
 // SFML
 #include "SFML/Graphics.hpp"
+#include "SFML/System.hpp"
 
 // Vec
 #include "vec.hpp"
@@ -14,8 +17,8 @@
 // Constants
 constexpr vec::Vec3f kOrigin{0.0F, 0.0F, 0.0F};
 
-constexpr int kCanvasWidth = 800U;
-constexpr int kCanvasHeight = 600U;
+constexpr int kCanvasWidth = 400U;
+constexpr int kCanvasHeight = 300U;
 
 constexpr float kViewportWidth = 1.0F;
 constexpr float kViewportHeight = 0.75F;
@@ -233,7 +236,6 @@ sf::Color traceRay(const vec::Vec3f& ray_point,
     float closest_t = std::numeric_limits<float>::infinity();
     std::optional<Sphere> closest_sphere;
 
-    // TODO: find a better way to access scene data
     for (const Sphere& sphere : kSceneSpheres) {
         // Get intersect point(s) if any
         const RaySphereIntersect t = calcRaySphereIntersect(ray_point, ray_vector, sphere);
@@ -283,24 +285,22 @@ int main() {
     sf::RenderWindow window(sf::VideoMode(kCanvasWidth, kCanvasHeight),
                             "Raytracer View",
                             sf::Style::Titlebar | sf::Style::Close);
+    window.setVerticalSyncEnabled(true);
+
+    // Clock object for tracking time elapsed between frames
+    sf::Clock clock;
 
     // Canvas for raytracer to draw on
     Canvas canvas{kCanvasWidth, kCanvasHeight};
 
-    // Single ray-trace pass
-    for (int x = -kCanvasWidth / 2; x < (kCanvasWidth / 2); x++) {
-        for (int y = -kCanvasHeight / 2; y < (kCanvasHeight / 2); y++) {
-            const vec::Vec3f viewport_point = canvasToViewport(x, y);
-            const sf::Color color = traceRay(kOrigin,
-                                             viewport_point,
-                                             1.0F, // only include objects beyond viewport
-                                             std::numeric_limits<float>::max());
-            canvas.put_pixel(x, y, color);
-        }
-    }
+    // Framerate text
+    sf::Text text_framerate;
+    sf::Font font;
+    font.loadFromFile("../OpenSans-Regular.ttf");
+    text_framerate.setFont(font);
 
-    // Take snapshot of all canvas pixel updates for drawing
-    canvas.snapshot();
+    // Camera position
+    vec::Vec3f camera_point = kOrigin;
 
     while (window.isOpen()) {
         // Process window events
@@ -311,9 +311,43 @@ int main() {
             }
         }
 
-        // Draw canvas to window
+        // Get elapsed time (TODO: also display framerate, with averaging)
+        const sf::Time elapsed = clock.restart();
+
+        // Get camera lateral velocity from keypress(es)
+        float lateral_velocity = 0.0F;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+        {
+            lateral_velocity -= 0.5F;
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+        {
+            lateral_velocity += 0.5F;
+        }
+
+        // Update camera position
+        camera_point.x() += (lateral_velocity * elapsed.asSeconds());
+        std::cout << "Velocity: " << lateral_velocity << std::endl;
+
+        // Single ray-trace pass
+        for (int x = -kCanvasWidth / 2; x < (kCanvasWidth / 2); x++) {
+            for (int y = -kCanvasHeight / 2; y < (kCanvasHeight / 2); y++) {
+                const vec::Vec3f viewport_point = canvasToViewport(x, y);
+                const sf::Color color = traceRay(camera_point,
+                                                 viewport_point,
+                                                 1.0F, // only include objects beyond viewport
+                                                 std::numeric_limits<float>::max());
+                canvas.put_pixel(x, y, color);
+            }
+        }
+
+        // Take snapshot of all canvas pixel updates for drawing
+        canvas.snapshot();
+
+        // Draw to window
         window.clear();
         window.draw(canvas);
+        window.draw(text_framerate);
         window.display();
     }
 
