@@ -21,6 +21,10 @@ constexpr float kViewportWidth = 1.0F;
 constexpr float kViewportHeight = 0.75F;
 constexpr float kViewportDepth = 0.75F;
 
+constexpr unsigned int kMaxRecursionDepth = 2U;
+
+constexpr float kEpsilon = 0.001;
+
 /******************************************************************************
  * SCENE TYPES AND DATA
  ******************************************************************************/
@@ -33,6 +37,7 @@ struct Sphere {
     float radius;
     sf::Color color;
     float specularity;
+    float reflectiveness;
 };
 
 // Scene spheres
@@ -41,25 +46,29 @@ const std::array<Sphere, 4> kSceneSpheres {{
         .center = vec::Vec3f{0.0F, -1.0F, 3.0F},
         .radius = 1.0F,
         .color = sf::Color::Red,
-        .specularity = 500,
+        .specularity = 500.0F,
+        .reflectiveness = 0.2F,
     },
     {
         .center = vec::Vec3f{2.0F, 0.0F, 4.0F},
         .radius = 1.0F,
         .color = sf::Color::Blue,
-        .specularity = 500,
+        .specularity = 500.0F,
+        .reflectiveness = 0.3F,
     },
     {
         .center = vec::Vec3f{-2.0F, 0.0F, 4.0F},
         .radius = 1.0F,
         .color = sf::Color::Green,
-        .specularity = 10,
+        .specularity = 10.0F,
+        .reflectiveness = 0.3F,
     },
     {
         .center = vec::Vec3f{0.0F, -5001.0F, 0.0F},
         .radius = 5000.0F,
         .color = sf::Color::Yellow,
-        .specularity = 1000,
+        .specularity = 1000.0F,
+        .reflectiveness = 0.2F,
     },
 }};
 
@@ -161,6 +170,11 @@ sf::Color scaleColor(const sf::Color& color, float intensity) {
                      std::clamp(static_cast<int>(color.b * intensity), 0, 255));
 }
 
+// Reflect the provided ray vector across the provided normal vector
+vec::Vec3f reflectRay(const vec::Vec3f& ray_vector, const vec::Vec3f& normal) {
+    return 2.0F * project_onto_unit(ray_vector, normal) - ray_vector;
+}
+
 // Get sphere intersect points
 using RaySphereIntersect = std::optional<std::pair<float, float>>;
 RaySphereIntersect calcRaySphereIntersect(const vec::Vec3f& ray_point,
@@ -244,7 +258,7 @@ float computeLighting(vec::Vec3f point, vec::Vec3f normal, vec::Vec3f ray, float
 
             // Check for clear line of sight to the light source
             // TODO: Decrease light intensity with range? Inverse square law?
-            if (!calcClosestRaySphereIntersect(point, direction, 0.001F, max_t_occlusion)) {
+            if (!calcClosestRaySphereIntersect(point, direction, kEpsilon, max_t_occlusion)) {
                 // Diffuse lighting
                 const float normal_dot_direction = dot(normal, direction);
                 if (normal_dot_direction > 0.0F) {
@@ -257,7 +271,7 @@ float computeLighting(vec::Vec3f point, vec::Vec3f normal, vec::Vec3f ray, float
                 // Non-physical model: intensity is cos(alpha)^specularity, where alpha is the angle
                 // between the reflection vector and the negative of the ray vector we're tracing
                 if (specularity > 0.0F) {
-                    vec::Vec3f reflection = 2.0F * normal * dot(normal, direction) - direction;
+                    const vec::Vec3f reflection = reflectRay(direction, normal);
                     const float reflection_dot_ray = dot(reflection, -ray);
                     if (reflection_dot_ray > 0.0F) {
                         const float reflection_ray_angle = reflection_dot_ray /
@@ -277,7 +291,8 @@ float computeLighting(vec::Vec3f point, vec::Vec3f normal, vec::Vec3f ray, float
 sf::Color traceRay(const vec::Vec3f& ray_point,
                    const vec::Vec3f& ray_vector,
                    float t_min,
-                   float t_max) {
+                   float t_max,
+                   unsigned int recursion_depth = kMaxRecursionDepth) {
 
     // Get the closest sphere intersect, if any
     const auto closest_intersect =
@@ -291,7 +306,22 @@ sf::Color traceRay(const vec::Vec3f& ray_point,
                                                 normal,
                                                 ray_vector,
                                                 closest_intersect->sphere.specularity);
-        return scaleColor(closest_intersect->sphere.color, intensity);
+        const sf::Color local_color = scaleColor(closest_intersect->sphere.color, intensity);
+
+        // Handle reflectivity via recursive raytracing
+        const float reflectiveness = closest_intersect->sphere.reflectiveness;
+        if ((recursion_depth > 0) && (reflectiveness > 0.0F)) {
+            vec::Vec3f reflected_ray = reflectRay(-ray_vector, normal);
+            const sf::Color reflected_color = traceRay(intersect_point,
+                                                       reflected_ray,
+                                                       0.1F, // Note: kEpsilon results in artifacts
+                                                       std::numeric_limits<float>::infinity(),
+                                                       recursion_depth - 1);
+            return scaleColor(local_color, (1.0F - reflectiveness)) +
+                    scaleColor(reflected_color, reflectiveness);
+        } else {
+            return local_color;
+        }
     } else {
         // Background color for no intersect
         return sf::Color::White;
