@@ -4,6 +4,8 @@
 
 #include <optional>
 
+#include "vec.hpp"
+
 #include "canvas.hpp"
 #include "primitives.hpp"
 #include "scene.hpp"

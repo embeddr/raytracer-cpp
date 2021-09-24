@@ -7,13 +7,21 @@
 
 #include <optional>
 
-// TODO: Define a camera type
+#include "vec.hpp"
+#include "transform.hpp"
+
+struct Camera {
+    vec::Transform3f transform;
+
+    static Camera make(vec::Mat3f orientation, vec::Vec3f position) {
+        return Camera {.transform = vec::Transform3f(orientation, position)};
+    }
+};
 
 // TODO: Define a base shape type to be used for finding intersects
 
 // Sphere object
 struct Sphere {
-    // Sphere data
     vec::Vec3f center;
     float radius;
     sf::Color color;
