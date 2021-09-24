@@ -12,5 +12,10 @@ add_library(vec INTERFACE)
 target_include_directories(vec INTERFACE ${VEC_INCLUDE_DIR})
 
 # Raytracer
-add_executable(raytracer main.cpp)
+add_executable(raytracer
+        src/main.cpp
+        src/canvas.hpp
+        src/primitives.hpp
+        src/raytrace.hpp
+        src/scene.hpp)
 target_link_libraries(raytracer sfml-graphics vec)
