@@ -16,8 +16,11 @@
 class Canvas : public sf::Drawable {
 public:
     // Construct a canvas of specified dimensions and color (default black)
-    Canvas(std::size_t width, std::size_t height, sf::Color color=sf::Color::Black) {
-        image_.create(width, height, color);
+    Canvas(std::size_t width, std::size_t height, sf::Color color=sf::Color::Black) :
+        width_(width),
+        height_(height)
+    {
+        image_.create(width_, height_, color);
         texture_.loadFromImage(image_);
         sprite_.setTexture(texture_);
     }
@@ -25,8 +28,7 @@ public:
     // Place a pixel of the specified color at the specified coordinates
     // Origin is at center of canvas, positive x is right, positive y is up
     void put_pixel(int x, int y, sf::Color color) {
-        auto size = image_.getSize();
-        image_.setPixel((size.x / 2) + x, (size.y / 2) - y, color);
+        image_.setPixel((width_ / 2) + x, (height_ / 2) - y - 1, color);
     }
 
     // Take a snapshot of all pixel updates so that they may be drawn
@@ -45,5 +47,8 @@ private:
     sf::Image image_;
     sf::Texture texture_;
     sf::Sprite sprite_;
+
+    std::size_t width_;
+    std::size_t height_;
 };
 

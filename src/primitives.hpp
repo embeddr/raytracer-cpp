@@ -14,7 +14,7 @@ struct Camera {
     vec::Transform3f transform;
 
     static Camera make(vec::Mat3f orientation, vec::Vec3f position) {
-        return Camera {.transform = vec::Transform3f(orientation, position)};
+        return Camera{.transform = vec::Transform3f(orientation, position)};
     }
 };
 

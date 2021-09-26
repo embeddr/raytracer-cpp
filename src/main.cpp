@@ -1,16 +1,21 @@
 // Standard lib
 #include <limits>
 #include <iostream>
+#include <thread>
 
 // SFML
 #include "SFML/Graphics.hpp"
 
 // Vec
 #include "vec.hpp"
+#include "transform.hpp"
 
 // Project
 #include "canvas.hpp"
 #include "raytrace.hpp"
+#include "scene.hpp"
+
+constexpr unsigned int kNumThreads = 8U;
 
 constexpr int kCanvasWidth = 800U;
 constexpr int kCanvasHeight = 600U;
@@ -19,12 +24,6 @@ constexpr float kViewportWidth = 1.0F;
 constexpr float kViewportHeight = 0.75F;
 constexpr float kViewportDepth = 0.75F;
 
-unsigned int current_camera_idx = 0U;
-
-const vec::Transform3f& camera_transform() {
-    return kSceneCameras[current_camera_idx].transform;
-}
-
 // Convert the provided canvas pixel coordinates to point on viewport plane
 vec::Vec3f canvas_to_viewport(int x, int y) {
     return vec::Vec3f{x * kViewportWidth / kCanvasWidth,
@@ -32,21 +31,40 @@ vec::Vec3f canvas_to_viewport(int x, int y) {
                       kViewportDepth};
 }
 
-// Update the canvas by performing the raytracing algorithim for all pixels
-// TODO: Parallelize this function
-void update_canvas(Canvas& canvas) {
-    // Single ray-trace pass
-    for (int x = -kCanvasWidth / 2; x < (kCanvasWidth / 2); x++) {
-        for (int y = -kCanvasHeight / 2; y < (kCanvasHeight / 2); y++) {
-            const vec::Transform3f& camera = camera_transform();
-            const vec::Vec3f viewport_point =
-                    canvas_to_viewport(x, y) * camera.get_linear_transform();
-            const sf::Color color = trace_ray(camera.get_translation(),
-                                              viewport_point,
-                                              1.0F, // only include objects beyond viewport
-                                              std::numeric_limits<float>::max());
-            canvas.put_pixel(x, y, color);
+// Update the canvas by performing the raytracing algorithm across all pixels
+void update_canvas(Canvas& canvas, const vec::Transform3f& camera) {
+    // Helper to process a segment of the canvas
+    auto update_cols = [&](int segment, int num_segments) mutable {
+        // Determine begin/end columns for this segment
+        const int x_begin = segment * (kCanvasWidth/num_segments) - (kCanvasWidth/2);
+        const int x_end = (segment == (num_segments-1)) ?
+                (kCanvasWidth / 2) : // Final segment, process to final column
+                (segment+1) * (kCanvasWidth/num_segments) - (kCanvasWidth/2);
+
+        // Update columns
+        for (int x = x_begin; x < x_end; x++) {
+            for (int y = -(kCanvasHeight / 2); y < (kCanvasHeight / 2); y++) {
+                const vec::Vec3f viewport_point =
+                        canvas_to_viewport(x, y) * camera.get_linear_transform();
+                const sf::Color color = trace_ray(camera.get_translation(),
+                                                  viewport_point,
+                                                  kViewportDepth,
+                                                  std::numeric_limits<float>::max());
+                canvas.put_pixel(x, y, color);
+            }
         }
+    };
+
+    // Spawn threads to update all canvas columns
+    std::array<std::thread, kNumThreads> threads;
+    unsigned int segment = 0U;
+    for (auto& thread : threads) {
+        thread = std::thread{update_cols, segment++, kNumThreads};
+    }
+
+    // Wait for all threads to finish
+    for (auto& thread : threads) {
+        thread.join();
     }
 
     // Take snapshot of all canvas pixel updates for drawing
@@ -54,15 +72,23 @@ void update_canvas(Canvas& canvas) {
 }
 
 int main() {
+    // SFML window to display
     sf::RenderWindow window(sf::VideoMode(kCanvasWidth, kCanvasHeight),
                             "Raytracer View",
                             sf::Style::Titlebar | sf::Style::Close);
 
-    // Canvas for raytracer to draw on
+    // Canvas for raytracer to draw pixels on
     Canvas canvas{kCanvasWidth, kCanvasHeight};
 
-    // Perform single raytracing pass on canvas
-    update_canvas(canvas);
+    // Get first camera from scene
+    if (kSceneCameras.empty()) {
+        std::cerr << "No cameras defined in scene!" << std::endl;
+        exit(1);
+    }
+    auto camera_iter = kSceneCameras.cbegin();
+
+    // Perform single raytracing pass
+    update_canvas(canvas, camera_iter->transform);
 
     while (window.isOpen()) {
         // Process window events
@@ -73,17 +99,16 @@ int main() {
             }
         }
 
-        // Process keyboard inputs
-        static bool prev_key_pressed = false;
-        bool key_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
-        if (key_pressed && ~prev_key_pressed) {
-            // Iterate through available cameras
-            current_camera_idx = (current_camera_idx + 1) % kSceneCameras.size();
-
-            // Re-run raytracing with new camera position
-            update_canvas(canvas);
+        // Move to next camera position on space keypress
+        static bool space_pressed_prev = false;
+        bool space_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
+        if (space_pressed && !space_pressed_prev) {
+            if (++camera_iter == kSceneCameras.cend()) {
+                camera_iter = kSceneCameras.cbegin();
+            }
+            update_canvas(canvas, camera_iter->transform);
         }
-        prev_key_pressed = key_pressed;
+        space_pressed_prev = space_pressed;
 
         // Draw canvas to window
         window.clear();
