@@ -1,6 +1,7 @@
 # raytracer-cpp
-Basic C++ software raytracer, based on "Computer Graphics From Scratch". Created
-as a learning exercise.
+Basic C++ software raytracer, created as a learning exercise. Based on the
+introduction to raytracing provided in the book "Computer Graphics From Scratch"
+by Gabriel Gambetta, with some extensions and ideas of my own.
 
 ## Requirements / Dependencies
 * g++ 10 or later

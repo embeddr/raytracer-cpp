@@ -9,23 +9,16 @@
 #include <vector>
 
 #include "vec.hpp"
+#include "transform.hpp"
 
 #include "primitives.hpp"
 
 constexpr vec::Vec3f kOrigin{0.0F, 0.0F, 0.0F};
 
-// TODO: Update Vec to support easy rotation matrix creation
-const float kPi = 3.141592654F;
-const vec::Mat3f rotate_y_45 = {
-    {std::cos(kPi/4.0F), 0.0F, std::sin(kPi/4.0F)},
-    {0.0F, 1.0F, 0.0F},
-    {-std::sin(kPi/4.0F), 0.0F, std::cos(kPi/4.0F)},
-};
-
 // Scene cameras
 const std::vector<Camera> kSceneCameras {{
     Camera::make(vec::Mat3f::identity(), kOrigin),
-    Camera::make(rotate_y_45, {3.0F, 0.0F, 1.0F}),
+    Camera::make(vec::Transform3f::rotate_y(M_PI/4.0), {3.0F, 0.0F, 1.0F}),
 }};
 
 // Scene spheres
