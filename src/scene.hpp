@@ -7,6 +7,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 #include "vec.hpp"
 #include "transform.hpp"
@@ -21,35 +22,64 @@ const std::vector<Camera> kSceneCameras {{
     Camera::make(vec::Transform3f::rotate_y(M_PI/4.0), {3.0F, 0.0F, 1.0F}),
 }};
 
+// Scene materials
+const std::unordered_map<std::string, Material> kSceneMaterials {
+    {
+        "red_dull",
+        {
+            .color = sf::Color::Red,
+            .specularity = 100.0F,
+            .reflectiveness = 0.2F,
+        }
+    },
+    {
+        "blue",
+        {
+            .color = sf::Color::Blue,
+            .specularity = 250.0F,
+            .reflectiveness = 0.3F,
+        }
+    },
+    {
+        "silver",
+        {
+            .color = {200, 200, 200},
+            .specularity = 500.0F,
+            .reflectiveness = 0.5F,
+        }
+    },
+    {
+        "yellow_dull",
+        {
+            .color = sf::Color::Yellow,
+            .specularity = 10.0F,
+            .reflectiveness = 0.1F,
+        }
+    },
+};
+
+
 // Scene spheres
 const std::vector<Sphere> kSceneSpheres {{
    {
        .center = {0.0F, -1.0F, 3.0F},
        .radius = 1.0F,
-       .color = sf::Color::Red,
-       .specularity = 500.0F,
-       .reflectiveness = 0.2F,
+       .material = kSceneMaterials.at("red_dull"),
    },
    {
        .center = {2.0F, 0.0F, 4.0F},
        .radius = 1.0F,
-       .color = sf::Color::Blue,
-       .specularity = 500.0F,
-       .reflectiveness = 0.3F,
+       .material = kSceneMaterials.at("silver"),
    },
    {
        .center = {-2.0F, 0.0F, 4.0F},
        .radius = 1.0F,
-       .color = sf::Color::Green,
-       .specularity = 10.0F,
-       .reflectiveness = 0.3F,
+       .material = kSceneMaterials.at("blue"),
    },
    {
        .center = {0.0F, -5001.0F, 0.0F},
        .radius = 5000.0F,
-       .color = sf::Color::Yellow,
-       .specularity = 1000.0F,
-       .reflectiveness = 0.2F,
+       .material = kSceneMaterials.at("yellow_dull"),
    },
 }};
 

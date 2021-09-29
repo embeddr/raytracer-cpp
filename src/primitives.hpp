@@ -18,15 +18,20 @@ struct Camera {
     }
 };
 
+// Material object
+struct Material {
+    sf::Color color;
+    float specularity;    // [0.0F to disable, else positive]
+    float reflectiveness; // [0.0F - 1.0F]
+};
+
 // TODO: Define a base shape type to be used for finding intersects
 
 // Sphere object
 struct Sphere {
     vec::Vec3f center;
     float radius;
-    sf::Color color;
-    float specularity;    // [0.0F to disable, else positive]
-    float reflectiveness; // [0.0F, 1.0F]
+    Material material;
 
     // Get ray-sphere intersect points, if any
     using RayIntersect = std::optional<std::pair<float, float>>;

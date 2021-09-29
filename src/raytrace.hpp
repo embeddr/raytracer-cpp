@@ -156,11 +156,12 @@ sf::Color trace_ray(const vec::Vec3f& ray_point,
         const float intensity = compute_lighting(intersect_point,
                                                  normal,
                                                  ray_vector,
-                                                 closest_intersect->sphere.specularity);
-        const sf::Color local_color = scale_color(closest_intersect->sphere.color, intensity);
+                                                 closest_intersect->sphere.material.specularity);
+        const sf::Color local_color = scale_color(closest_intersect->sphere.material.color,
+                                                  intensity);
 
         // Handle reflectivity via recursive raytracing
-        const float reflectiveness = closest_intersect->sphere.reflectiveness;
+        const float reflectiveness = closest_intersect->sphere.material.reflectiveness;
         if ((recursion_depth > 0) && (reflectiveness > 0.0F)) {
             vec::Vec3f reflected_ray = reflect_across_normal(-ray_vector, normal);
             const sf::Color reflected_color = trace_ray(intersect_point,
