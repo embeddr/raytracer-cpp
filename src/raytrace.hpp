@@ -25,61 +25,46 @@ vec::Vec3f reflect_across_normal(const vec::Vec3f& ray_vector, const vec::Vec3f&
     return 2.0F * project_onto_unit(ray_vector, normal) - ray_vector;
 }
 
-// Get the ray-sphere intersect and a reference to the associated sphere. By default, returns the
+// Get the ray-shape intersect and a reference to the associated shape. By default, returns the
 // closest intersect, but can also be specified to return the first intersect found.
-// TODO: make this generic for any shape
-struct ClosestRaySphereIntersect {
+struct RayShapeIntersectData {
     float t;
-    const Sphere& sphere;
+    const Shape& shape;
 };
-std::optional<ClosestRaySphereIntersect> calc_ray_sphere_intersect(const vec::Vec3f& point,
-                                                                   const vec::Vec3f& vector,
-                                                                   float t_min,
-                                                                   float t_max,
-                                                                   bool find_closest=true) {
+std::optional<RayShapeIntersectData> calc_ray_shape_intersect(const vec::Vec3f& point,
+                                                              const vec::Vec3f& vector,
+                                                              float t_min,
+                                                              float t_max,
+                                                              bool find_closest= true) {
     // Closest sphere intersect data
     float closest_t = std::numeric_limits<float>::infinity();
-    std::optional<std::reference_wrapper<const Sphere>> closest_sphere;
+    std::optional<std::reference_wrapper<const Shape>> closest_shape;
 
-    for (const Sphere& sphere : kSceneSpheres) {
-        // Get ray-sphere intersect points, if any
-        const Sphere::RayIntersect t = sphere.calc_ray_intersect(point, vector);
-        if (t) {
+    // TODO: iterate across all shapes as added
+    for (const Shape& shape_object : kSceneSpheres) {
+        // Get ray-shape_object intersect points, if any
+        const Sphere::RayIntersect intersects = shape_object.calc_ray_intersect(point, vector);
+        for (float t : intersects) {
             // Check first intersect against provided range
-            if ((t->first > t_min) && (t->first < t_max)) {
+            if ((t > t_min) && (t < t_max)) {
                 if (find_closest) {
                     // Check if intersect is closer than any previous, then continue
-                    if (t->first < closest_t) {
-                        closest_t = t->first;
-                        closest_sphere = sphere;
+                    if (t < closest_t) {
+                        closest_t = t;
+                        closest_shape = shape_object;
                     }
                 } else {
                     // Any intersect is sufficient; break early
-                    closest_t = t->first;
-                    closest_sphere = sphere;
-                    break;
-                }
-            }
-            // Check second intersect against provided range
-            if ((t->second > t_min) && (t->second < t_max)) {
-                if (find_closest) {
-                    // Check if intersect is closer than any previous, then continue
-                    if (t->second < closest_t) {
-                        closest_t = t->second;
-                        closest_sphere = sphere;
-                    }
-                } else {
-                    // Any intersect is sufficient; break early
-                    closest_t = t->second;
-                    closest_sphere = sphere;
+                    closest_t = t;
+                    closest_shape = shape_object;
                     break;
                 }
             }
         }
     }
 
-    if (closest_sphere) {
-        return ClosestRaySphereIntersect{closest_t, (*closest_sphere).get()};
+    if (closest_shape) {
+        return RayShapeIntersectData{closest_t, (*closest_shape).get()};
     } else {
         return std::nullopt;
     }
@@ -109,7 +94,7 @@ float compute_lighting(vec::Vec3f point, vec::Vec3f normal, vec::Vec3f ray, floa
 
             // Check for clear line of sight to the light source
             // TODO: Decrease light intensity with range? Inverse square law?
-            if (!calc_ray_sphere_intersect(point, direction, kEpsilon, max_t_occlusion, false)) {
+            if (!calc_ray_shape_intersect(point, direction, kEpsilon, max_t_occlusion, false)) {
                 // Diffuse lighting
                 const float normal_dot_direction = dot(normal, direction);
                 if (normal_dot_direction > 0.0F) {
@@ -147,21 +132,21 @@ sf::Color trace_ray(const vec::Vec3f& ray_point,
 
     // Get the closest sphere intersect, if any
     const auto closest_intersect =
-            calc_ray_sphere_intersect(ray_point, ray_vector, t_min, t_max);
+            calc_ray_shape_intersect(ray_point, ray_vector, t_min, t_max);
 
     if (closest_intersect) {
         // Apply lighting intensity to sphere color at intersect
         const vec::Vec3f intersect_point = ray_point + closest_intersect->t * ray_vector;
-        const vec::Vec3f normal = (intersect_point - closest_intersect->sphere.center).normalize();
+        const vec::Vec3f normal = closest_intersect->shape.calc_normal(intersect_point);
         const float intensity = compute_lighting(intersect_point,
                                                  normal,
                                                  ray_vector,
-                                                 closest_intersect->sphere.material.specularity);
-        const sf::Color local_color = scale_color(closest_intersect->sphere.material.color,
+                                                 closest_intersect->shape.material.specularity);
+        const sf::Color local_color = scale_color(closest_intersect->shape.material.color,
                                                   intensity);
 
         // Handle reflectivity via recursive raytracing
-        const float reflectiveness = closest_intersect->sphere.material.reflectiveness;
+        const float reflectiveness = closest_intersect->shape.material.reflectiveness;
         if ((recursion_depth > 0) && (reflectiveness > 0.0F)) {
             vec::Vec3f reflected_ray = reflect_across_normal(-ray_vector, normal);
             const sf::Color reflected_color = trace_ray(intersect_point,

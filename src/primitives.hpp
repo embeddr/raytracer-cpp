@@ -18,6 +18,8 @@ struct Camera {
     }
 };
 
+// TODO: define ray class?
+
 // Material object
 struct Material {
     sf::Color color;
@@ -25,18 +27,35 @@ struct Material {
     float reflectiveness; // [0.0F - 1.0F]
 };
 
-// TODO: Define a base shape type to be used for finding intersects
-
-// Sphere object
-struct Sphere {
-    vec::Vec3f center;
-    float radius;
+// Generic shape object
+struct Shape {
+    // Shape material
     Material material;
 
+    explicit Shape(const Material& material) : material(material) {}
+
+    // Get vector of ray-shape intersect point(s), if any
+    using RayIntersect = std::vector<float>;
+    virtual RayIntersect calc_ray_intersect(const vec::Vec3f& ray_point,
+                                            const vec::Vec3f& ray_vector) const = 0;
+    // Get normal vector given shape surface point
+    virtual vec::Vec3f calc_normal(const vec::Vec3f& surface_point) const = 0;
+};
+
+// Sphere object
+struct Sphere : public Shape {
+    // Sphere-specific shape data
+    vec::Vec3f center;
+    float radius;
+
+    Sphere(const vec::Vec3f& center, float radius, const Material& material) :
+        Shape(material),
+        center(center),
+        radius(radius) {}
+
     // Get ray-sphere intersect points, if any
-    using RayIntersect = std::optional<std::pair<float, float>>;
     RayIntersect calc_ray_intersect(const vec::Vec3f& ray_point,
-                                    const vec::Vec3f& ray_vector) const {
+                                    const vec::Vec3f& ray_vector) const override {
         const float r = radius;
         const vec::Vec3f c_p = ray_point - center;
 
@@ -47,14 +66,20 @@ struct Sphere {
         const float discriminant = (b*b) - (4*a*c);
         if (discriminant < 0.0F) {
             // No intersect point
-            return std::nullopt;
+            return {};
         }
 
         const float disc_root = std::sqrt(discriminant);
 
-        return std::make_pair((-b + disc_root) / (2*a), (-b - disc_root) / (2*a));
+        return std::vector<float>{
+            (-b + disc_root) / (2*a),
+            (-b - disc_root) / (2*a)
+        };
     }
 
+    vec::Vec3f calc_normal(const vec::Vec3f& surface_point) const override {
+        return (surface_point - center).normalize();
+    }
 };
 
 // Light object
