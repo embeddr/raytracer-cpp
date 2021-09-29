@@ -44,10 +44,10 @@ void update_canvas(Canvas& canvas, const vec::Transform3f& camera) {
         // Update columns
         for (int x = x_begin; x < x_end; x++) {
             for (int y = -(kCanvasHeight / 2); y < (kCanvasHeight / 2); y++) {
-                const vec::Vec3f viewport_point =
+                const vec::Vec3f viewport_vector =
                         canvas_to_viewport(x, y) * camera.get_linear_transform();
-                const sf::Color color = trace_ray(camera.get_translation(),
-                                                  viewport_point,
+                const Ray ray = {camera.get_translation(), viewport_vector};
+                const sf::Color color = trace_ray(ray,
                                                   kViewportDepth,
                                                   std::numeric_limits<float>::max());
                 canvas.put_pixel(x, y, color);

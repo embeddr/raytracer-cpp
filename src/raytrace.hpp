@@ -31,8 +31,7 @@ struct RayShapeIntersectData {
     float t;
     const Shape& shape;
 };
-std::optional<RayShapeIntersectData> calc_ray_shape_intersect(const vec::Vec3f& point,
-                                                              const vec::Vec3f& vector,
+std::optional<RayShapeIntersectData> calc_ray_shape_intersect(const Ray& ray,
                                                               float t_min,
                                                               float t_max,
                                                               bool find_closest= true) {
@@ -43,9 +42,9 @@ std::optional<RayShapeIntersectData> calc_ray_shape_intersect(const vec::Vec3f& 
     // TODO: iterate across all shapes as added
     for (const Shape& shape_object : kSceneSpheres) {
         // Get ray-shape_object intersect points, if any
-        const Sphere::RayIntersect intersects = shape_object.calc_ray_intersect(point, vector);
-        for (float t : intersects) {
-            // Check first intersect against provided range
+        const Sphere::RayIntersect intersect_points = shape_object.calc_ray_intersect(ray);
+        for (float t : intersect_points) {
+            // Check intersect point against provided range
             if ((t > t_min) && (t < t_max)) {
                 if (find_closest) {
                     // Check if intersect is closer than any previous, then continue
@@ -94,7 +93,7 @@ float compute_lighting(vec::Vec3f point, vec::Vec3f normal, vec::Vec3f ray, floa
 
             // Check for clear line of sight to the light source
             // TODO: Decrease light intensity with range? Inverse square law?
-            if (!calc_ray_shape_intersect(point, direction, kEpsilon, max_t_occlusion, false)) {
+            if (!calc_ray_shape_intersect({point, direction}, kEpsilon, max_t_occlusion, false)) {
                 // Diffuse lighting
                 const float normal_dot_direction = dot(normal, direction);
                 if (normal_dot_direction > 0.0F) {
@@ -124,23 +123,22 @@ float compute_lighting(vec::Vec3f point, vec::Vec3f normal, vec::Vec3f ray, floa
 
 // Trace ray using provided point, vector, and independent variable range.
 // Calculate the color and lighting for the closest intersect point, if any.
-sf::Color trace_ray(const vec::Vec3f& ray_point,
-                    const vec::Vec3f& ray_vector,
+sf::Color trace_ray(const Ray& ray,
                     float t_min,
                     float t_max,
                     unsigned int recursion_depth = kMaxRecursionDepth) {
 
     // Get the closest sphere intersect, if any
     const auto closest_intersect =
-            calc_ray_shape_intersect(ray_point, ray_vector, t_min, t_max);
+            calc_ray_shape_intersect(ray, t_min, t_max);
 
     if (closest_intersect) {
         // Apply lighting intensity to sphere color at intersect
-        const vec::Vec3f intersect_point = ray_point + closest_intersect->t * ray_vector;
+        const vec::Vec3f intersect_point = ray.calc_point(closest_intersect->t);
         const vec::Vec3f normal = closest_intersect->shape.calc_normal(intersect_point);
         const float intensity = compute_lighting(intersect_point,
                                                  normal,
-                                                 ray_vector,
+                                                 ray.vector,
                                                  closest_intersect->shape.material.specularity);
         const sf::Color local_color = scale_color(closest_intersect->shape.material.color,
                                                   intensity);
@@ -148,9 +146,8 @@ sf::Color trace_ray(const vec::Vec3f& ray_point,
         // Handle reflectivity via recursive raytracing
         const float reflectiveness = closest_intersect->shape.material.reflectiveness;
         if ((recursion_depth > 0) && (reflectiveness > 0.0F)) {
-            vec::Vec3f reflected_ray = reflect_across_normal(-ray_vector, normal);
-            const sf::Color reflected_color = trace_ray(intersect_point,
-                                                        reflected_ray,
+            const Ray reflected_ray = {intersect_point, reflect_across_normal(-ray.vector, normal)};
+            const sf::Color reflected_color = trace_ray(reflected_ray,
                                                         kEpsilon * closest_intersect->t,
                                                         std::numeric_limits<float>::infinity(),
                                                         recursion_depth - 1);

@@ -43,9 +43,9 @@ const std::unordered_map<std::string, Material> kSceneMaterials {
     {
         "silver",
         {
-            .color = {200, 200, 200},
+            .color = {210, 210, 210},
             .specularity = 500.0F,
-            .reflectiveness = 0.5F,
+            .reflectiveness = 0.6F,
         }
     },
     {

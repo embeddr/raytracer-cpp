@@ -18,7 +18,15 @@ struct Camera {
     }
 };
 
-// TODO: define ray class?
+// Ray object
+struct Ray {
+    vec::Vec3f point;
+    vec::Vec3f vector;
+
+    vec::Vec3f calc_point(float t) const {
+        return point + (t * vector);
+    }
+};
 
 // Material object
 struct Material {
@@ -29,15 +37,15 @@ struct Material {
 
 // Generic shape object
 struct Shape {
-    // Shape material
+    // Generic shape data
     Material material;
 
     explicit Shape(const Material& material) : material(material) {}
 
     // Get vector of ray-shape intersect point(s), if any
     using RayIntersect = std::vector<float>;
-    virtual RayIntersect calc_ray_intersect(const vec::Vec3f& ray_point,
-                                            const vec::Vec3f& ray_vector) const = 0;
+    virtual RayIntersect calc_ray_intersect(const Ray& ray) const = 0;
+
     // Get normal vector given shape surface point
     virtual vec::Vec3f calc_normal(const vec::Vec3f& surface_point) const = 0;
 };
@@ -54,13 +62,12 @@ struct Sphere : public Shape {
         radius(radius) {}
 
     // Get ray-sphere intersect points, if any
-    RayIntersect calc_ray_intersect(const vec::Vec3f& ray_point,
-                                    const vec::Vec3f& ray_vector) const override {
+    RayIntersect calc_ray_intersect(const Ray& ray) const override {
         const float r = radius;
-        const vec::Vec3f c_p = ray_point - center;
+        const vec::Vec3f c_p = ray.point - center;
 
-        const float a = dot(ray_vector, ray_vector);
-        const float b = dot(c_p, ray_vector) * 2.0F;
+        const float a = dot(ray.vector, ray.vector);
+        const float b = dot(c_p, ray.vector) * 2.0F;
         const float c = dot(c_p, c_p) - (r*r);
 
         const float discriminant = (b*b) - (4*a*c);
