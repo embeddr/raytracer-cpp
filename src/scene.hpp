@@ -20,16 +20,18 @@ constexpr vec::Vec3f kOrigin{0.0F, 0.0F, 0.0F};
 const std::vector<Camera> kSceneCameras {{
     Camera::make(vec::Mat3f::identity(), kOrigin),
     Camera::make(vec::Transform3f::rotate_y(M_PI/4.0), {3.0F, 0.0F, 1.0F}),
+    Camera::make(vec::Transform3f::rotate_y(-M_PI/4.0), {-3.0F, 0.0F, 1.0F}),
 }};
 
 // Scene materials
 const std::unordered_map<std::string, Material> kSceneMaterials {
     {
-        "red_dull",
+        "red_translucent",
         {
             .color = sf::Color::Red,
-            .specularity = 100.0F,
-            .reflectiveness = 0.2F,
+            .specularity = 5.0F,
+            .reflectiveness = 0.1F,
+            .transparency = 0.5F,
         }
     },
     {
@@ -49,9 +51,9 @@ const std::unordered_map<std::string, Material> kSceneMaterials {
         }
     },
     {
-        "yellow_dull",
+        "green_dull",
         {
-            .color = sf::Color::Yellow,
+            .color = {150, 250, 50},
             .specularity = 10.0F,
             .reflectiveness = 0.1F,
         }
@@ -60,10 +62,10 @@ const std::unordered_map<std::string, Material> kSceneMaterials {
 
 // Scene spheres
 const std::vector<Sphere> kSceneSpheres {{
-    Sphere(vec::Vec3f{0.0F, -1.0F, 3.0F}, 1.0F, kSceneMaterials.at("red_dull")),
+    Sphere(vec::Vec3f{0.0F, -1.0F, 3.0F}, 1.2F, kSceneMaterials.at("red_translucent")),
     Sphere(vec::Vec3f{2.0F, 0.0F, 4.0F}, 1.0F, kSceneMaterials.at("silver")),
     Sphere(vec::Vec3f{-2.0F, 0.0F, 4.0F}, 1.0F, kSceneMaterials.at("blue")),
-    Sphere(vec::Vec3f{0.0F, -5001.0F, 0.0F}, 5000.0F, kSceneMaterials.at("yellow_dull")),
+    Sphere(vec::Vec3f{0.0F, -5001.0F, 0.0F}, 5000.0F, kSceneMaterials.at("green_dull")),
 }};
 
 // Scene lights

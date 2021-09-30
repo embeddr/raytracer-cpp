@@ -18,7 +18,6 @@ struct Camera {
     }
 };
 
-// Ray object
 struct Ray {
     vec::Vec3f point;
     vec::Vec3f vector;
@@ -28,14 +27,14 @@ struct Ray {
     }
 };
 
-// Material object
 struct Material {
     sf::Color color;
     float specularity;    // [0.0F to disable, else positive]
+    // Note: sum of reflectiveness and transparency must be <= 1.0F
     float reflectiveness; // [0.0F - 1.0F]
+    float transparency;   // [0.0F - 1.0F]
 };
 
-// Generic shape object
 struct Shape {
     // Generic shape data
     Material material;
@@ -50,7 +49,6 @@ struct Shape {
     virtual vec::Vec3f calc_normal(const vec::Vec3f& surface_point) const = 0;
 };
 
-// Sphere object
 struct Sphere : public Shape {
     // Sphere-specific shape data
     vec::Vec3f center;
@@ -89,7 +87,6 @@ struct Sphere : public Shape {
     }
 };
 
-// Light object
 struct Light {
     enum class Type {
         kAmbient,

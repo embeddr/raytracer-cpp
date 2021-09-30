@@ -92,7 +92,6 @@ float compute_lighting(vec::Vec3f point, vec::Vec3f normal, vec::Vec3f ray, floa
             }
 
             // Check for clear line of sight to the light source
-            // TODO: Decrease light intensity with range? Inverse square law?
             if (!calc_ray_shape_intersect({point, direction}, kEpsilon, max_t_occlusion, false)) {
                 // Diffuse lighting
                 const float normal_dot_direction = dot(normal, direction);
@@ -143,19 +142,34 @@ sf::Color trace_ray(const Ray& ray,
         const sf::Color local_color = scale_color(closest_intersect->shape.material.color,
                                                   intensity);
 
-        // Handle reflectivity via recursive raytracing
+        // Handle reflectivity via recursive raytracing with a reflected vector
         const float reflectiveness = closest_intersect->shape.material.reflectiveness;
+        sf::Color reflected_color_blend{};
         if ((recursion_depth > 0) && (reflectiveness > 0.0F)) {
             const Ray reflected_ray = {intersect_point, reflect_across_normal(-ray.vector, normal)};
             const sf::Color reflected_color = trace_ray(reflected_ray,
                                                         kEpsilon * closest_intersect->t,
                                                         std::numeric_limits<float>::infinity(),
                                                         recursion_depth - 1);
-            return scale_color(local_color, (1.0F - reflectiveness)) +
-                   scale_color(reflected_color, reflectiveness);
-        } else {
-            return local_color;
+            reflected_color_blend = scale_color(reflected_color, reflectiveness);
         }
+
+        // Handle transparency via recursive raytracing with a continuing vector
+        const float transparency = closest_intersect->shape.material.transparency;
+        sf::Color transparent_color_blend{};
+        if ((transparency > 0.0F)) {
+            const Ray transparent_ray = {intersect_point, ray.vector};
+            const sf::Color transparent_color = trace_ray(transparent_ray,
+                                                          kEpsilon,
+                                                          std::numeric_limits<float>::infinity(),
+                                                          0);
+            transparent_color_blend = scale_color(transparent_color, transparency);
+        }
+
+        // Blend local color with reflected and transparent colors
+        const sf::Color local_color_blend = scale_color(local_color,
+                                                        1.0F - (reflectiveness + transparency));
+        return local_color_blend + reflected_color_blend + transparent_color_blend;
     } else {
         // Background color for no intersect
         return sf::Color::White;
