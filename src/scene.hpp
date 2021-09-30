@@ -31,7 +31,7 @@ const std::unordered_map<std::string, Material> kSceneMaterials {
             .color = sf::Color::Red,
             .specularity = 5.0F,
             .reflectiveness = 0.1F,
-            .transparency = 0.5F,
+            .transparency = 0.4F,
         }
     },
     {
@@ -70,7 +70,7 @@ const std::vector<Sphere> kSceneSpheres {{
 
 // Scene lights
 const std::vector<Light> kSceneLights {{
-    Light::make_ambient(0.2F),
+    Light::make_ambient(0.4F),
     Light::make_point(0.6F, {2.1F, 1.0F, 0.0F}),
     Light::make_directional(0.2F, {1.0F, 4.0F, 4.0F})
 }};

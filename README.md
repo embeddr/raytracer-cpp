@@ -1,7 +1,9 @@
 # raytracer-cpp
 Basic C++ software raytracer, created as a learning exercise. Based on the
 introduction to raytracing provided in the book "Computer Graphics From Scratch"
-by Gabriel Gambetta, with some extensions and ideas of my own.
+by Gabriel Gambetta, with some modifications and extensions of my own.
+
+![Screenshot](doc/screenshot.png)
 
 ## Requirements / Dependencies
 * g++ 10 or later
@@ -36,3 +38,8 @@ under `cmake-build-debug` in the project directory. To run:
 
 Alternatively, import this project into an IDE with cmake integration (such as
 CLion) for convenience.
+
+### Camera Control
+
+The rendered scene includes multiple camera perspectives. Press spacebar to move to the next
+camera position/orientation.

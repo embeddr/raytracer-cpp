@@ -132,18 +132,13 @@ sf::Color trace_ray(const Ray& ray,
             calc_ray_shape_intersect(ray, t_min, t_max);
 
     if (closest_intersect) {
-        // Apply lighting intensity to sphere color at intersect
+        // Get useful intersect data
         const vec::Vec3f intersect_point = ray.calc_point(closest_intersect->t);
         const vec::Vec3f normal = closest_intersect->shape.calc_normal(intersect_point);
-        const float intensity = compute_lighting(intersect_point,
-                                                 normal,
-                                                 ray.vector,
-                                                 closest_intersect->shape.material.specularity);
-        const sf::Color local_color = scale_color(closest_intersect->shape.material.color,
-                                                  intensity);
+        const Material& material = closest_intersect->shape.material;
 
         // Handle reflectivity via recursive raytracing with a reflected vector
-        const float reflectiveness = closest_intersect->shape.material.reflectiveness;
+        const float reflectiveness = material.reflectiveness;
         sf::Color reflected_color_blend{};
         if ((recursion_depth > 0) && (reflectiveness > 0.0F)) {
             const Ray reflected_ray = {intersect_point, reflect_across_normal(-ray.vector, normal)};
@@ -155,21 +150,28 @@ sf::Color trace_ray(const Ray& ray,
         }
 
         // Handle transparency via recursive raytracing with a continuing vector
-        const float transparency = closest_intersect->shape.material.transparency;
+        const float transparency = material.transparency;
         sf::Color transparent_color_blend{};
         if ((transparency > 0.0F)) {
             const Ray transparent_ray = {intersect_point, ray.vector};
             const sf::Color transparent_color = trace_ray(transparent_ray,
                                                           kEpsilon,
                                                           std::numeric_limits<float>::infinity(),
-                                                          0);
+                                                          0); // No reflectivity in recursive calls
             transparent_color_blend = scale_color(transparent_color, transparency);
         }
 
         // Blend local color with reflected and transparent colors
-        const sf::Color local_color_blend = scale_color(local_color,
-                                                        1.0F - (reflectiveness + transparency));
-        return local_color_blend + reflected_color_blend + transparent_color_blend;
+        const sf::Color local_color_blend = scale_color(material.color,
+                                                        1.0F - reflectiveness - transparency);
+        const sf::Color blend = local_color_blend + reflected_color_blend + transparent_color_blend;
+
+        // Compute and apply lighting intensity to blended color
+        const float light_intensity = compute_lighting(intersect_point,
+                                                       normal,
+                                                       ray.vector,
+                                                       material.specularity);
+        return scale_color(blend, light_intensity);
     } else {
         // Background color for no intersect
         return sf::Color::White;
