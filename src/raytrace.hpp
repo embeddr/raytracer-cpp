@@ -11,7 +11,7 @@
 #include "scene.hpp"
 
 constexpr float kEpsilon = 0.001F;
-constexpr unsigned int kMaxRecursionDepth = 2U;
+constexpr unsigned int kMaxRecursionDepth = 3U;
 
 // Scale the provided color struct (excluding alpha) by the provided intensity, with saturation
 sf::Color scale_color(const sf::Color& color, float intensity) {
@@ -41,19 +41,19 @@ std::optional<RayShapeIntersectData> calc_ray_shape_intersect(const Ray& ray,
 
     // TODO: iterate across all shapes as added
     for (const Shape& shape_object : kSceneSpheres) {
-        // Get ray-shape_object intersect points, if any
+        // Get ray-shape intersection points, if any
         const Sphere::RayIntersect intersect_points = shape_object.calc_ray_intersect(ray);
         for (float t : intersect_points) {
-            // Check intersect point against provided range
+            // Check intersection point against provided range
             if ((t > t_min) && (t < t_max)) {
                 if (find_closest) {
-                    // Check if intersect is closer than any previous, then continue
+                    // Check if intersection is closer than any previous, then continue
                     if (t < closest_t) {
                         closest_t = t;
                         closest_shape = shape_object;
                     }
                 } else {
-                    // Any intersect is sufficient; break early
+                    // Any intersection is sufficient; break early
                     closest_t = t;
                     closest_shape = shape_object;
                     break;
@@ -120,6 +120,41 @@ float compute_lighting(vec::Vec3f point, vec::Vec3f normal, vec::Vec3f ray, floa
     return intensity;
 }
 
+vec::Vec3f calc_refraction_vector(const vec::Vec3f& incoming,
+                                  const vec::Vec3f& normal,
+                                  float refractivity) {
+    if (refractivity <= 0.0F) {
+        return incoming;
+    }
+
+    // Determine if light is entering or exiting object with non-zero refractivity
+    const bool entering_shape = dot(normal, incoming) < 0.0F;
+
+    // Normalize inputs and set signs according to whether we're entering or exiting
+    const vec::Vec3f arrival_unit = -incoming.normalize();
+    const vec::Vec3f normal_unit = entering_shape ? normal.normalize() : -normal.normalize();
+    const float refractive_ratio = entering_shape ?
+                                   1.0F / (1.0F + refractivity) :
+                                   1.0F + refractivity;
+
+    // Compute refraction transmission vector
+    const float normal_dot_arrival = dot(normal_unit, arrival_unit);
+    const float temp = 1.0F - (normal_dot_arrival * normal_dot_arrival);
+    const float in_radical = 1.0F - (refractive_ratio * refractive_ratio * temp);
+
+    // Handle total internal reflection case
+    if (in_radical < 0.0F) {
+        return reflect_across_normal(arrival_unit, normal_unit);
+    }
+
+    const float radical = std::sqrt(in_radical);
+
+    const vec::Vec3f parallel = (refractive_ratio * normal_dot_arrival - radical) * normal_unit;
+    const vec::Vec3f perpendicular = -refractive_ratio * arrival_unit;
+
+    return parallel + perpendicular;
+}
+
 // Trace ray using provided point, vector, and independent variable range.
 // Calculate the color and lighting for the closest intersect point, if any.
 sf::Color trace_ray(const Ray& ray,
@@ -138,32 +173,37 @@ sf::Color trace_ray(const Ray& ray,
         const Material& material = closest_intersect->shape.material;
 
         // Handle reflectivity via recursive raytracing with a reflected vector
-        const float reflectiveness = material.reflectiveness;
+        const float reflectivity = material.reflectivity;
         sf::Color reflected_color_blend{};
-        if ((recursion_depth > 0) && (reflectiveness > 0.0F)) {
+        if ((recursion_depth > 0) && (reflectivity > 0.0F)) {
             const Ray reflected_ray = {intersect_point, reflect_across_normal(-ray.vector, normal)};
             const sf::Color reflected_color = trace_ray(reflected_ray,
                                                         kEpsilon * closest_intersect->t,
                                                         std::numeric_limits<float>::infinity(),
-                                                        recursion_depth - 1);
-            reflected_color_blend = scale_color(reflected_color, reflectiveness);
+                                                        recursion_depth-1);
+            reflected_color_blend = scale_color(reflected_color, reflectivity);
         }
 
         // Handle transparency via recursive raytracing with a continuing vector
         const float transparency = material.transparency;
         sf::Color transparent_color_blend{};
-        if ((transparency > 0.0F)) {
-            const Ray transparent_ray = {intersect_point, ray.vector};
-            const sf::Color transparent_color = trace_ray(transparent_ray,
+        if ((recursion_depth > 0) && (transparency > 0.0F)) {
+            // TODO: determine ray direction based on refractivity
+
+            const Ray continuing_ray = {intersect_point,
+                                        calc_refraction_vector(ray.vector,
+                                                               normal,
+                                                               material.refractivity)};
+            const sf::Color transparent_color = trace_ray(continuing_ray,
                                                           kEpsilon,
                                                           std::numeric_limits<float>::infinity(),
-                                                          0); // No reflectivity in recursive calls
+                                                          recursion_depth-1);
             transparent_color_blend = scale_color(transparent_color, transparency);
         }
 
         // Blend local color with reflected and transparent colors
         const sf::Color local_color_blend = scale_color(material.color,
-                                                        1.0F - reflectiveness - transparency);
+                                                        1.0F - reflectivity - transparency);
         const sf::Color blend = local_color_blend + reflected_color_blend + transparent_color_blend;
 
         // Compute and apply lighting intensity to blended color

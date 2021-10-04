@@ -29,3 +29,6 @@ cmake-build-*/
 
 # Jetbrains
 .idea
+
+# Other
+tags*

@@ -22,7 +22,7 @@ constexpr int kCanvasHeight = 600U;
 
 constexpr float kViewportWidth = 1.0F;
 constexpr float kViewportHeight = 0.75F;
-constexpr float kViewportDepth = 0.75F;
+constexpr float kViewportDepth = 0.70F;
 
 // Convert the provided canvas pixel coordinates to point on viewport plane
 vec::Vec3f canvas_to_viewport(int x, int y) {

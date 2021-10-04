@@ -19,8 +19,8 @@ constexpr vec::Vec3f kOrigin{0.0F, 0.0F, 0.0F};
 // Scene cameras
 const std::vector<Camera> kSceneCameras {{
     Camera::make(vec::Mat3f::identity(), kOrigin),
-    Camera::make(vec::Transform3f::rotate_y(M_PI/4.0), {3.0F, 0.0F, 1.0F}),
-    Camera::make(vec::Transform3f::rotate_y(-M_PI/4.0), {-3.0F, 0.0F, 1.0F}),
+    Camera::make(vec::Transform3f::rotate_y(M_PI/8.0), {2.0F, 0.0F, 0.0F}),
+    Camera::make(vec::Transform3f::rotate_y(-M_PI/8.0), {-2.0F, 0.0F, 0.0F}),
 }};
 
 // Scene materials
@@ -30,8 +30,9 @@ const std::unordered_map<std::string, Material> kSceneMaterials {
         {
             .color = sf::Color::Red,
             .specularity = 5.0F,
-            .reflectiveness = 0.1F,
-            .transparency = 0.4F,
+            .reflectivity = 0.0F,
+            .transparency = 0.9F,
+            .refractivity = 0.02F,
         }
     },
     {
@@ -39,7 +40,7 @@ const std::unordered_map<std::string, Material> kSceneMaterials {
         {
             .color = sf::Color::Blue,
             .specularity = 250.0F,
-            .reflectiveness = 0.3F,
+            .reflectivity = 0.3F,
         }
     },
     {
@@ -47,7 +48,7 @@ const std::unordered_map<std::string, Material> kSceneMaterials {
         {
             .color = {210, 210, 210},
             .specularity = 500.0F,
-            .reflectiveness = 0.6F,
+            .reflectivity = 0.6F,
         }
     },
     {
@@ -55,14 +56,14 @@ const std::unordered_map<std::string, Material> kSceneMaterials {
         {
             .color = {150, 250, 50},
             .specularity = 10.0F,
-            .reflectiveness = 0.1F,
+            .reflectivity = 0.05F,
         }
     },
 };
 
 // Scene spheres
 const std::vector<Sphere> kSceneSpheres {{
-    Sphere(vec::Vec3f{0.0F, -1.0F, 3.0F}, 1.2F, kSceneMaterials.at("red_translucent")),
+    Sphere(vec::Vec3f{0.0F, 0.0F, 3.0F}, 1.0F, kSceneMaterials.at("red_translucent")),
     Sphere(vec::Vec3f{2.0F, 0.0F, 4.0F}, 1.0F, kSceneMaterials.at("silver")),
     Sphere(vec::Vec3f{-2.0F, 0.0F, 4.0F}, 1.0F, kSceneMaterials.at("blue")),
     Sphere(vec::Vec3f{0.0F, -5001.0F, 0.0F}, 5000.0F, kSceneMaterials.at("green_dull")),

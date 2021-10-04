@@ -30,9 +30,10 @@ struct Ray {
 struct Material {
     sf::Color color;
     float specularity;    // [0.0F to disable, else positive]
-    // Note: sum of reflectiveness and transparency must be <= 1.0F
-    float reflectiveness; // [0.0F - 1.0F]
+    // Note: sum of reflectivity and transparency must be <= 1.0F
+    float reflectivity;   // [0.0F - 1.0F]
     float transparency;   // [0.0F - 1.0F]
+    float refractivity;   // [0.0F to disable, else positive]
 };
 
 struct Shape {

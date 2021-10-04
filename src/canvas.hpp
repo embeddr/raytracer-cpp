@@ -35,6 +35,7 @@ public:
     // Must be called after placing pixels for changes to take effect
     void snapshot() {
         texture_.loadFromImage(image_);
+        texture_.setSmooth(true);
     }
 
 private:
