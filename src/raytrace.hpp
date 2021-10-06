@@ -10,7 +10,6 @@
 #include "primitives.hpp"
 #include "scene.hpp"
 
-constexpr float kEpsilon = 0.001F;
 constexpr unsigned int kMaxRecursionDepth = 3U;
 
 // Scale the provided color struct (excluding alpha) by the provided intensity, with saturation
@@ -31,36 +30,40 @@ struct RayShapeIntersectData {
     float t;
     const Shape& shape;
 };
+template <bool find_closest=true>
 std::optional<RayShapeIntersectData> calc_ray_shape_intersect(const Ray& ray,
                                                               float t_min,
-                                                              float t_max,
-                                                              bool find_closest= true) {
+                                                              float t_max) {
     // Closest sphere intersect data
     float closest_t = std::numeric_limits<float>::infinity();
     std::optional<std::reference_wrapper<const Shape>> closest_shape;
 
-    // TODO: iterate across all shapes as added
-    for (const Shape& shape_object : kSceneSpheres) {
-        // Get ray-shape intersection points, if any
-        const Sphere::RayIntersect intersect_points = shape_object.calc_ray_intersect(ray);
-        for (float t : intersect_points) {
-            // Check intersection point against provided range
-            if ((t > t_min) && (t < t_max)) {
-                if (find_closest) {
-                    // Check if intersection is closer than any previous, then continue
-                    if (t < closest_t) {
+    auto find_closest_shape = [&](const auto& objects) {
+        for (const Shape& shape_object : objects) {
+            // Get ray-shape intersection points, if any
+            const Shape::RayIntersect intersect_points = shape_object.calc_ray_intersect(ray);
+            for (float t : intersect_points) {
+                // Check intersection point against provided range
+                if ((t > t_min) && (t < t_max)) {
+                    if constexpr (find_closest) {
+                        // Check if intersection is closer than any previous, then continue
+                        if (t < closest_t) {
+                            closest_t = t;
+                            closest_shape = shape_object;
+                        }
+                    } else {
+                        // Any intersection is sufficient; break early
                         closest_t = t;
                         closest_shape = shape_object;
+                        break;
                     }
-                } else {
-                    // Any intersection is sufficient; break early
-                    closest_t = t;
-                    closest_shape = shape_object;
-                    break;
                 }
             }
         }
-    }
+    };
+
+    find_closest_shape(kSceneSpheres);
+    find_closest_shape(kScenePlanes);
 
     if (closest_shape) {
         return RayShapeIntersectData{closest_t, (*closest_shape).get()};
@@ -92,7 +95,7 @@ float compute_lighting(vec::Vec3f point, vec::Vec3f normal, vec::Vec3f ray, floa
             }
 
             // Check for clear line of sight to the light source
-            if (!calc_ray_shape_intersect({point, direction}, kEpsilon, max_t_occlusion, false)) {
+            if (!calc_ray_shape_intersect<false>({point, direction}, kEpsilon, max_t_occlusion)) {
                 // Diffuse lighting
                 const float normal_dot_direction = dot(normal, direction);
                 if (normal_dot_direction > 0.0F) {
@@ -127,7 +130,7 @@ vec::Vec3f calc_refraction_vector(const vec::Vec3f& incoming,
         return incoming;
     }
 
-    // Determine if light is entering or exiting object with non-zero refractivity
+    // Determine if light is entering or exiting object
     const bool entering_shape = dot(normal, incoming) < 0.0F;
 
     // Normalize inputs and set signs according to whether we're entering or exiting
@@ -142,17 +145,17 @@ vec::Vec3f calc_refraction_vector(const vec::Vec3f& incoming,
     const float temp = 1.0F - (normal_dot_arrival * normal_dot_arrival);
     const float in_radical = 1.0F - (refractive_ratio * refractive_ratio * temp);
 
-    // Handle total internal reflection case
     if (in_radical < 0.0F) {
+        // Total internal reflection
         return reflect_across_normal(arrival_unit, normal_unit);
     }
 
     const float radical = std::sqrt(in_radical);
 
-    const vec::Vec3f parallel = (refractive_ratio * normal_dot_arrival - radical) * normal_unit;
-    const vec::Vec3f perpendicular = -refractive_ratio * arrival_unit;
+    const vec::Vec3f first = (refractive_ratio * normal_dot_arrival - radical) * normal_unit;
+    const vec::Vec3f second = -refractive_ratio * arrival_unit;
 
-    return parallel + perpendicular;
+    return first + second;
 }
 
 // Trace ray using provided point, vector, and independent variable range.

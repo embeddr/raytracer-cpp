@@ -61,12 +61,16 @@ const std::unordered_map<std::string, Material> kSceneMaterials {
     },
 };
 
+// Scene planes
+const std::vector<Plane> kScenePlanes {{
+    Plane({0.0F, -1.0F, 0.0F}, {0.0F, 1.0F, 0.0F}, kSceneMaterials.at("green_dull")),
+}};
+
 // Scene spheres
 const std::vector<Sphere> kSceneSpheres {{
-    Sphere(vec::Vec3f{0.0F, 0.0F, 3.0F}, 1.0F, kSceneMaterials.at("red_translucent")),
-    Sphere(vec::Vec3f{2.0F, 0.0F, 4.0F}, 1.0F, kSceneMaterials.at("silver")),
-    Sphere(vec::Vec3f{-2.0F, 0.0F, 4.0F}, 1.0F, kSceneMaterials.at("blue")),
-    Sphere(vec::Vec3f{0.0F, -5001.0F, 0.0F}, 5000.0F, kSceneMaterials.at("green_dull")),
+    Sphere({0.0F, 0.0F, 3.0F}, 1.0F, kSceneMaterials.at("red_translucent")),
+    Sphere({2.0F, 0.0F, 4.0F}, 1.0F, kSceneMaterials.at("silver")),
+    Sphere({-2.0F, 0.0F, 4.0F}, 1.0F, kSceneMaterials.at("blue")),
 }};
 
 // Scene lights

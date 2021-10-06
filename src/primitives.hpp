@@ -10,6 +10,8 @@
 #include "vec.hpp"
 #include "transform.hpp"
 
+constexpr float kEpsilon = 0.001F;
+
 struct Camera {
     vec::Transform3f transform;
 
@@ -50,6 +52,40 @@ struct Shape {
     virtual vec::Vec3f calc_normal(const vec::Vec3f& surface_point) const = 0;
 };
 
+struct Plane : public Shape {
+    // Plane-specific shape data
+    vec::Vec3f point;
+    vec::Vec3f normal;
+
+    Plane(const vec::Vec3f& point, const vec::Vec3f normal, const Material& material) :
+        Shape(material),
+        point(point),
+        normal(normal) {}
+
+    RayIntersect calc_ray_intersect(const Ray& ray) const override {
+        const float denominator = dot(ray.vector, normal);
+        if (std::abs(denominator) < kEpsilon) {
+            // Ray is approximately parallel with surface; no intersect
+            return {};
+        }
+
+        const float numerator = dot((point - ray.point), normal);
+        const float t = numerator / denominator;
+        if (t < 0.0f) {
+            // Ray is in opposite direction from plane; no intersect
+            return {};
+        }
+
+        // Intersect point exists
+        return RayIntersect{t};
+    }
+
+    vec::Vec3f calc_normal(const vec::Vec3f& surface_point) const override {
+        (void)surface_point; // not needed
+        return normal;
+    }
+};
+
 struct Sphere : public Shape {
     // Sphere-specific shape data
     vec::Vec3f center;
@@ -84,7 +120,7 @@ struct Sphere : public Shape {
     }
 
     vec::Vec3f calc_normal(const vec::Vec3f& surface_point) const override {
-        return (surface_point - center).normalize();
+        return (surface_point - center);
     }
 };
 
