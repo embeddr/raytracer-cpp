@@ -12,28 +12,29 @@ by Gabriel Gambetta, with some modifications and extensions of my own.
     * Package must be visible to cmake. Installing via your distro's package
       manager is probably most convenient.
 
-This project includes Vec as a submodule. Vec provides basic vector/matrix
-classes and operations for games and other 3D applications. Be sure to
-initialize submodules after cloning to fetch required submodule data:
+This project includes [Vec](https://github.com/embeddr/vec) as a submodule. Vec
+provides basic vector/matrix classes and operations for games and other 3D
+applications. Be sure to initialize submodules after cloning to fetch required
+submodule data:
 ```
 git submodule update --init --recursive
 ```
 
 ## Build and Run
 This application is built using cmake. As an example, the following will build
-a debug binary:
+a release binary with optimizations:
 
 ```
 cd <project-root>
-cmake -Bcmake-build-debug -H. -DCMAKE_BUILD_TYPE=debug
-cmake --build cmake-build-debug --target all
+cmake -Bcmake-build-release -H. -DCMAKE_BUILD_TYPE=release
+cmake --build cmake-build-release --target all
 ```
 
 If the build was successful, an output binary titled `raytracer` will be located
-under `cmake-build-debug` in the project directory. To run:
+under `cmake-build-release` in the project directory. To run:
 
 ```
-./cmake-build-debug/raytracer
+./cmake-build-release/raytracer
 ```
 
 Alternatively, import this project into an IDE with cmake integration (such as

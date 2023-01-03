@@ -17,12 +17,12 @@
 
 constexpr unsigned int kNumThreads = 8U;
 
-constexpr int kCanvasWidth = 800U;
-constexpr int kCanvasHeight = 600U;
+constexpr int kCanvasWidth = 1280U;
+constexpr int kCanvasHeight = 720U;
 
-constexpr float kViewportWidth = 1.0F;
-constexpr float kViewportHeight = 0.75F;
-constexpr float kViewportDepth = 0.70F;
+constexpr float kViewportWidth = 1.2F;
+constexpr float kViewportHeight = 0.675F;
+constexpr float kViewportDepth = 0.75F;
 
 // Convert the provided canvas pixel coordinates to point on viewport plane
 vec::Vec3f canvas_to_viewport(int x, int y) {
